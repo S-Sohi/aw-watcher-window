@@ -15,7 +15,7 @@ from .config import parse_args
 from .exceptions import FatalError
 from .lib import get_current_window
 from .macos_permissions import background_ensure_permissions
-
+from .client import LocalClient
 logger = logging.getLogger(__name__)
 
 # run with LOG_LEVEL=DEBUG
@@ -57,11 +57,17 @@ def main():
 
     if sys.platform == "darwin":
         background_ensure_permissions()
-
+    team_id = int(args.teamId)
     client = ActivityWatchClient(
-        "aw-watcher-window", host=args.host, port=args.port, testing=args.testing
+        args.token,"aw-watcher-window", host=args.host, port=args.port, testing=args.testing
     )
-
+    host = '127.0.0.1'
+    port = 5600
+    if(args.testing):
+        port = 5666
+    local_client = LocalClient(f"http://{host}:{port}")
+    configuration_apps = local_client.get_team_configuration(team_id=team_id)
+    print(configuration_apps)
     bucket_id = f"{client.client_name}_{client.client_hostname}"
     event_type = "currentwindow"
 
@@ -99,12 +105,14 @@ def main():
                 bucket_id,
                 poll_time=args.poll_time,
                 strategy=args.strategy,
+                team_id = team_id,
+                include_titles=configuration_apps,
                 exclude_title=args.exclude_title,
                 exclude_titles=[try_compile_title_regex(title) for title in args.exclude_titles if title is not None]
             )
 
 
-def heartbeat_loop(client, bucket_id, poll_time, strategy, exclude_title=False, exclude_titles=[]):
+def heartbeat_loop(client, bucket_id, poll_time, strategy, team_id:int, include_titles=[], exclude_title=False, exclude_titles=[]):
     while True:
         if os.getppid() == 1:
             logger.info("window-watcher stopped because parent process died")
@@ -137,6 +145,13 @@ def heartbeat_loop(client, bucket_id, poll_time, strategy, exclude_title=False, 
         if current_window is None:
             logger.debug("Unable to fetch window, trying again on next poll")
         else:
+            is_included = False
+            for app_name in include_titles:
+                if(app_name in current_window["title"]):
+                    is_included = True
+            if(is_included == False):
+                current_window["title"] = "Hidden By Privacy Configuration"
+                current_window["app"] = "Hidden By Privacy Configuration"
             for pattern in exclude_titles:
                 if pattern.search(current_window["title"]):
                     current_window["title"] = "excluded"
@@ -146,7 +161,7 @@ def heartbeat_loop(client, bucket_id, poll_time, strategy, exclude_title=False, 
 
             now = datetime.now(timezone.utc)
             current_window_event = Event(timestamp=now, data=current_window)
-
+            current_window_event['team_id'] = team_id
             # Set pulsetime to 1 second more than the poll_time
             # This since the loop takes more time than poll_time
             # due to sleep(poll_time).

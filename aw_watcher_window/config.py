@@ -28,6 +28,8 @@ def parse_args():
     )
     parser.add_argument("--host", dest="host")
     parser.add_argument("--port", dest="port")
+    parser.add_argument("--token", dest="token")
+    parser.add_argument("--teamId", dest="teamId")
     parser.add_argument("--testing", dest="testing", action="store_true")
     parser.add_argument(
         "--exclude-title",
