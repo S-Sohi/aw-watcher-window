@@ -67,11 +67,10 @@ def main():
         port = 5666
     local_client = LocalClient(f"http://{host}:{port}")
     configuration_apps = local_client.get_team_configuration(team_id=team_id)
-    print(configuration_apps)
-    bucket_id = f"{client.client_name}_{client.client_hostname}"
+    bucket_id = 0
     event_type = "currentwindow"
 
-    client.create_bucket(bucket_id, event_type, queued=True)
+    bucket_id = client.create_bucket(bucket_id, event_type, queued=False)
 
     logger.info("aw-watcher-window started")
 
