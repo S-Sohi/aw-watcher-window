@@ -146,7 +146,7 @@ def heartbeat_loop(client, bucket_id, poll_time, strategy, team_id:int, include_
         else:
             is_included = False
             for app_name in include_titles:
-                if(app_name in current_window["title"]):
+                if(app_name in current_window["title"].lower()):
                     is_included = True
             if(is_included == False):
                 current_window["title"] = "Hidden By Privacy Configuration"
